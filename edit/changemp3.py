@@ -19,8 +19,8 @@ class ConvertError(Exception):
 	"""mp4→mp3 変換時のエラー用例外"""
 
 def convert_mp4_to_mp3(input_file: Path) -> Path:
-	"""mp4 ファイルを mp3 に変換するライブラリ関数。
-
+	"""
+	mp4 ファイルを mp3 に変換するライブラリ関数。
 	- mp3 の場合: 変換せず、そのまま Path を返す
 	- mp4 の場合: mp3 を生成し、その mp3 の Path を返す
 	- それ以外: ConvertError を送出
