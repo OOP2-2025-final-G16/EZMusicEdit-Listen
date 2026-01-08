@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import filedialog
 import xml.etree.ElementTree as ET
 import os
-import constants as c  # 定数をインポート
+import constants as c
 
 class PlaylistPage(tk.Frame):
     def __init__(self, parent, theme, config):
+        # 親の背景色を使用
         super().__init__(parent, bg=theme["bg"])
         
         # プレイリストファイルのリスト
@@ -15,19 +16,25 @@ class PlaylistPage(tk.Frame):
         tk.Label(self, text="🎵 プレイリスト", font=("Arial", 20, "bold"), 
                  bg=theme["bg"], fg=theme["fg"]).pack(pady=20)
         
-        # プレイリスト作成ボタン (アクセントカラーを使用)
-        btn = tk.Button(self, text="+ 新規プレイリスト作成", 
-                        bg=c.COLOR_HIGHLIGHT, fg=c.COLOR_BTN_TEXT, 
-                        relief="flat", padx=10)
-        btn.pack(pady=10)
+        # 共通のボタンスタイル（枠線を消す設定を追加）
+        btn_style = {
+            "bg": c.COLOR_HIGHLIGHT, 
+            "fg": c.COLOR_BTN_TEXT, 
+            "relief": "flat", 
+            "highlightthickness": 0, 
+            "bd": 0, 
+            "padx": 20, 
+            "pady": 5,
+            "cursor": "hand2"
+        }
         
-        # ファイル選択ボタン (サイドバー色を再利用)
-        select_btn = tk.Button(self, text="ファイルを選択", 
-                               bg=c.COLOR_SIDEBAR, fg=c.COLOR_BTN_TEXT, 
-                               relief="flat", padx=20, pady=5, command=self.select_files)
-        select_btn.pack(pady=10)
+        # プレイリスト作成ボタン
+        tk.Button(self, text="+ 新規プレイリスト作成", **btn_style).pack(pady=10)
         
-        # ファイル一覧表示フレーム
+        # ファイル選択ボタン
+        tk.Button(self, text="ファイルを選択", command=self.select_files, **btn_style).pack(pady=10)
+        
+        # ファイル一覧表示フレーム（背景をリスト専用色に統一）
         list_frame = tk.Frame(self, bg=c.COLOR_LIST_BG, width=600, height=400)
         list_frame.pack(pady=20, padx=50)
         list_frame.pack_propagate(False)
@@ -84,17 +91,19 @@ class PlaylistPage(tk.Frame):
             
             # 再生アイコン（▶）とファイル名
             label = tk.Label(item_frame, text=f"▶ {filename}", 
-                           fg=c.COLOR_LIST_TEXT, bg=c.COLOR_LIST_BG, 
-                           font=("Arial", 12), anchor="w")
+                           fg=c.COLOR_LIST_TEXT, bg=c.COLOR_LIST_BG, font=("Arial", 12), anchor="w")
             label.pack(side="left", fill="x", expand=True)
     
     def save_to_xml(self):
+        # XMLルート要素を作成
         root = ET.Element("playlist")
+        
         for idx, file_path in enumerate(self.playlist_files):
             file_element = ET.SubElement(root, "file")
             file_element.set("order", str(idx + 1))
             file_element.set("path", file_path)
         
+        # XML書き出し
         tree = ET.ElementTree(root)
         xml_path = "playlist.xml"
         tree.write(xml_path, encoding="utf-8", xml_declaration=True)
