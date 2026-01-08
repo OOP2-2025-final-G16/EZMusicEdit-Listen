@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog
 import xml.etree.ElementTree as ET
 import os
+import constants as c  # 定数をインポート
 
 class PlaylistPage(tk.Frame):
     def __init__(self, parent, theme, config):
@@ -14,24 +15,27 @@ class PlaylistPage(tk.Frame):
         tk.Label(self, text="🎵 プレイリスト", font=("Arial", 20, "bold"), 
                  bg=theme["bg"], fg=theme["fg"]).pack(pady=20)
         
-        # プレイリスト作成ボタン
-        btn = tk.Button(self, text="+ 新規プレイリスト作成", bg="#3498db", fg="white", relief="flat", padx=10)
+        # プレイリスト作成ボタン (アクセントカラーを使用)
+        btn = tk.Button(self, text="+ 新規プレイリスト作成", 
+                        bg=c.COLOR_HIGHLIGHT, fg=c.COLOR_BTN_TEXT, 
+                        relief="flat", padx=10)
         btn.pack(pady=10)
         
-        # ファイル選択ボタン
-        select_btn = tk.Button(self, text="ファイルを選択", bg="#2c3e50", fg="white", 
+        # ファイル選択ボタン (サイドバー色を再利用)
+        select_btn = tk.Button(self, text="ファイルを選択", 
+                               bg=c.COLOR_SIDEBAR, fg=c.COLOR_BTN_TEXT, 
                                relief="flat", padx=20, pady=5, command=self.select_files)
         select_btn.pack(pady=10)
         
         # ファイル一覧表示フレーム
-        list_frame = tk.Frame(self, bg="#000000", width=600, height=400)
+        list_frame = tk.Frame(self, bg=c.COLOR_LIST_BG, width=600, height=400)
         list_frame.pack(pady=20, padx=50)
         list_frame.pack_propagate(False)
         
         # ファイル一覧のスクロール可能なキャンバス
-        self.canvas = tk.Canvas(list_frame, bg="#000000", highlightthickness=0)
+        self.canvas = tk.Canvas(list_frame, bg=c.COLOR_LIST_BG, highlightthickness=0)
         scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas, bg="#000000")
+        self.scrollable_frame = tk.Frame(self.canvas, bg=c.COLOR_LIST_BG)
         
         # スクロール設定
         self.scrollable_frame.bind(
@@ -72,32 +76,26 @@ class PlaylistPage(tk.Frame):
         
         # ファイルリストを表示
         for idx, file_path in enumerate(self.playlist_files):
-            # ファイル名を取得
             filename = os.path.basename(file_path)
             
             # ファイルアイテムフレーム
-            item_frame = tk.Frame(self.scrollable_frame, bg="#000000")
+            item_frame = tk.Frame(self.scrollable_frame, bg=c.COLOR_LIST_BG)
             item_frame.pack(fill="x", padx=10, pady=5)
             
             # 再生アイコン（▶）とファイル名
             label = tk.Label(item_frame, text=f"▶ {filename}", 
-                           fg="white", bg="#000000", font=("Arial", 12), anchor="w")
+                           fg=c.COLOR_LIST_TEXT, bg=c.COLOR_LIST_BG, 
+                           font=("Arial", 12), anchor="w")
             label.pack(side="left", fill="x", expand=True)
     
     def save_to_xml(self):
-        # XMLルート要素を作成
         root = ET.Element("playlist")
-        
-        # 各ファイルのパスと順番をXMLに追加
         for idx, file_path in enumerate(self.playlist_files):
             file_element = ET.SubElement(root, "file")
             file_element.set("order", str(idx + 1))
             file_element.set("path", file_path)
         
-        # XMLツリーを作成
         tree = ET.ElementTree(root)
-        
-        # XMLファイルに書き出し
         xml_path = "playlist.xml"
         tree.write(xml_path, encoding="utf-8", xml_declaration=True)
         print(f"プレイリストを保存しました: {xml_path}")
