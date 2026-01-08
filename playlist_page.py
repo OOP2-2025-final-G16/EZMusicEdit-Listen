@@ -26,6 +26,11 @@ class PlaylistPage(tk.Frame):
         self.view_mode = "list"  # 表示モード: "list"（一覧）, "detail"（詳細）
         self.music_manager = library()  # 音楽再生用のライブラリ
         
+        # 連続再生用の変数
+        self.current_playing_playlist = None  # 現在再生中のプレイリスト名
+        self.current_track_index = 0  # 現在再生中の曲のインデックス
+        self.is_playing = False  # 再生中かどうか
+        
         # === UI要素の配置 ===
         
         # タイトルラベル
@@ -346,8 +351,8 @@ class PlaylistPage(tk.Frame):
     
     def play_selected_playlist(self):
         """
-        選択されたプレイリストを再生
-        プレイリストの最初の曲を再生する
+        選択されたプレイリストを順次再生
+        プレイリスト内の全ての曲を順番に再生する
         """
         if not self.selected_playlist_for_play:
             messagebox.showinfo("選択なし", "再生するプレイリストを選択してください。")
@@ -361,18 +366,76 @@ class PlaylistPage(tk.Frame):
             messagebox.showinfo("曲なし", "プレイリストに曲がありません。")
             return
         
+        # 再生状態を初期化
+        self.current_playing_playlist = self.selected_playlist_for_play
+        self.current_track_index = 0
+        self.is_playing = True
+        
         # 最初の曲を再生
+        self._play_current_track()
+        
+        # 定期的に再生状態をチェック
+        self._check_playback_status()
+    
+    def _play_current_track(self):
+        """
+        現在のトラックを再生
+        """
+        if not self.current_playing_playlist or self.current_playing_playlist not in self.playlists:
+            return
+        
+        files = self.playlists[self.current_playing_playlist]
+        if self.current_track_index >= len(files):
+            # 全ての曲を再生完了
+            self.is_playing = False
+            self.title_label.config(text="🎵 プレイリスト")
+            return
+        
         try:
-            self.music_manager.play_music(files[0])
-            messagebox.showinfo("再生開始", f"{os.path.basename(files[0])} を再生中")
+            current_file = files[self.current_track_index]
+            self.music_manager.play_music(current_file)
+            # タイトルラベルに再生中のプレイリスト名を表示
+            self.title_label.config(text=f"🎵 [{self.current_playing_playlist}]を再生しています")
+            print(f"再生中: {os.path.basename(current_file)} ({self.current_track_index + 1}/{len(files)})")
         except Exception as e:
             messagebox.showerror("再生エラー", f"再生できませんでした: {e}")
+            self.is_playing = False
+    
+    def _check_playback_status(self):
+        """
+        再生状態を定期的にチェックし、曲が終わったら次の曲を再生
+        """
+        if not self.is_playing:
+            return
+        
+        # pygameの音楽が再生中かチェック
+        import pygame
+        if not pygame.mixer.music.get_busy():
+            # 曲が終了した
+            self.current_track_index += 1
+            if self.current_playing_playlist and self.current_track_index < len(self.playlists.get(self.current_playing_playlist, [])):
+                # 次の曲を再生
+                self._play_current_track()
+            else:
+                # プレイリスト終了
+                self.is_playing = False
+                self.title_label.config(text="🎵 プレイリスト")
+                return
+        
+        # 100ミリ秒後に再度チェック
+        self.after(100, self._check_playback_status)
     
     def stop_playlist(self):
         """
         プレイリストの再生を停止
         """
         self.music_manager.stop_music()
+        self.is_playing = False
+        self.current_playing_playlist = None
+        self.current_track_index = 0
+        # 一覧画面の場合はタイトルをリセット
+        if self.view_mode == "list":
+            self.title_label.config(text="🎵 プレイリスト")
     
     # ==========================================
     # XMLファイル保存
