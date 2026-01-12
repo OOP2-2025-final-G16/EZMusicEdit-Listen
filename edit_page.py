@@ -12,19 +12,10 @@ from edit.timeline_helper import TimelineController
 class EditPage(tk.Frame):
     def __init__(self, parent, theme, config):
         super().__init__(parent, bg=theme["bg"])
-
-        self.config_data = config
-
-        title = tk.Label(
-            self,
-            text="✂️ EDIT & ADD",
-            font=("Arial", 20, "bold"),
-            bg=theme["bg"],
-            fg=theme["fg"],
-        )
-        title.pack(pady=20)
-
-        # ---------- ファイル入力 ----------
+        
+        tk.Label(self, text="✂️ EDIT & ADD", font=("Arial", 20, "bold"), 
+                 bg=theme["bg"], fg=theme["fg"]).pack(pady=20)
+        
         form = tk.Frame(self, bg=theme["bg"])
         form.pack(pady=10)
 
