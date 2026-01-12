@@ -8,7 +8,7 @@ class MyApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Music Editor App")
-        self.root.geometry("900x650")
+        self.root.geometry("900x750")
         self.app_config = {"username": "Guest"}
         self.menu_items = {}
         self.current_page = "" # 現在のページを保持
