@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 import pygame
-from library import library  # library.pyから読み込み
+from misc.library import library  # library.pyから読み込み
 
 class LibraryPage(tk.Frame):
     def __init__(self, parent, theme, config):
@@ -24,11 +24,13 @@ class LibraryPage(tk.Frame):
         self.time_label = tk.Label(self.info_frame, text="00:00 / 00:00", 
                                    bg=theme["bg"], fg="white", font=("Arial", 10))
         
+        self._setup_initial_seek_bar() # 起動時にシークバーをあらかじめ作成して表示しておく
         self._setup_scroll_area() # スクロール可能なエリアの作成
         self.refresh_list() # ページが作られた時にリストを表示する
         self.check_music_status() # 監視ループを開始する
         self.bind("<Destroy>", self.on_destroy) # このページが消された（MyAppがdestroyした）時に呼ばれる設定
         self.is_dragging = False # マウス操作中かどうかを判定するフラグ
+        self.is_paused = False  # 一時停止状態かどうかのフラグ
         self.current_seek_start = 0  # シークを開始した時点の秒数
 
     def _setup_scroll_area(self):
@@ -50,23 +52,49 @@ class LibraryPage(tk.Frame):
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
+    def _setup_initial_seek_bar(self):
+        """初期状態のシークバーを作成（中身は0）"""
+        if self.seek_bar:
+            self.seek_bar.destroy()
+        
+        # 暫定的に to=100 などで作成
+        self.seek_bar = tk.Scale(self.info_frame, from_=0, to=100, 
+                                 orient=tk.HORIZONTAL, showvalue=False,
+                                 bg=self.theme["bg"], fg="white", highlightthickness=0,
+                                 command=self.on_seek)
+        self.seek_bar.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=5)
+        self.time_label.pack(side=tk.RIGHT, padx=10)
+        # イベントをバインドして、マウス操作を検知できるようにする
+        self.seek_bar.bind("<ButtonPress-1>", self.on_drag_start)
+        self.seek_bar.bind("<ButtonRelease-1>", self.on_drag_end)
+
     def toggle_music(self, path, button):
         if self.current_playing_path == path and self.music_manager.is_playing():
+            self.current_seek_start += self.music_manager.get_pos()
             self.music_manager.stop_music()
-            self._hide_seek_bar()
+            self.is_paused = True
             button.config(text="▶")
-            self.current_playing_path = None
-            self.current_seek_start = 0 # リセット
         else:
-            if self.current_button:
-                self.current_button.config(text="▶")
-
+            # 別の曲を再生する場合、または一時停止からの復帰
+            if self.current_playing_path != path:
+                # 全く別の曲なら位置をリセット
+                self.current_seek_start = 0
+                self.is_paused = False
+                if self.current_button:
+                    self.current_button.config(text="▶")
+            
+            # 保存されている位置（0 または停止した位置）から再生
             self.music_duration = self.music_manager.play_music(path)
-            self.current_seek_start = 0 # 新規再生時は0
-            self._show_seek_bar(self.music_duration)
+            self.music_manager.set_pos(path, self.current_seek_start)
+            
+            # シークバーを新しく作らず、既存のものの最大値を更新する
+            if self.seek_bar:
+                self.seek_bar.config(to=self.music_duration)
+            
             button.config(text="■")
             self.current_playing_path = path
             self.current_button = button
+            self.is_paused = False
 
     def _format_time(self, seconds):
         """秒数を 00:00 の形式に変換"""
@@ -92,50 +120,49 @@ class LibraryPage(tk.Frame):
         self.seek_bar.bind("<ButtonPress-1>", self.on_drag_start)
         self.seek_bar.bind("<ButtonRelease-1>", self.on_drag_end)
 
-    def _hide_seek_bar(self):
-        """シークバーを隠す"""
-        if self.seek_bar:
-            self.seek_bar.destroy()
-            self.seek_bar = None
-        self.time_label.pack_forget()
-
     def on_drag_start(self, event):
         self.is_dragging = True
 
     def on_drag_end(self, event):
+        if self.current_playing_path:
+            # ドラッグ終了時の値を確定させる
+            new_pos = float(self.seek_bar.get())
+            self.current_seek_start = new_pos
+            # 再生位置をスキップ
+            self.music_manager.set_pos(self.current_playing_path, new_pos)
+        
+        # 最後にフラグを戻す（check_music_statusによる上書きを再開）
+        self.after(100, self._reset_dragging)
+
+    def _reset_dragging(self):
         self.is_dragging = False
 
     def on_seek(self, value):
         """シークバーが操作された時に再生位置を変更"""
         # ドラッグ中のみ処理を実行するようにし、頻繁な load/play を防ぐ
-        if self.current_playing_path and self.is_dragging:
-            sec = float(value)
-            self.current_seek_start = sec # シークした位置を記憶
-            self.music_manager.set_pos(self.current_playing_path, sec)
+        if self.is_dragging:
+            current_str = self._format_time(value)
+            total_str = self._format_time(self.music_duration)
+            self.time_label.config(text=f"{current_str} / {total_str}")
 
     def check_music_status(self):
         """音楽の再生状態とシークバーを更新"""
         if self.music_manager.is_playing():
             # ドラッグ中でない時だけ、シークバーの位置を更新する
             if self.seek_bar and not self.is_dragging:
-                # 補正：シーク開始位置 + 再生開始からの経過時間
-                current_pos = self.current_seek_start + self.music_manager.get_pos()
-                
-                # スケールの値を更新（command=on_seek が呼ばれないように直接値をセット）
-                self.seek_bar.set(current_pos) 
-
-                # 時間ラベルの更新
-                current_str = self._format_time(current_pos)
-                total_str = self._format_time(self.music_duration)
-                self.time_label.config(text=f"{current_str} / {total_str}")
+                passed_time = self.music_manager.get_pos()
+                current_pos = self.current_seek_start + passed_time
+                self.seek_bar.set(current_pos)
+                self.time_label.config(text=f"{self._format_time(current_pos)} / {self._format_time(self.music_duration)}")
         else:
-            # 再生が完全に終わった場合のみリセット
-            if self.current_button and not self.is_dragging:
+            # 一時停止中（is_paused == True）なら、UIをリセットせずに維持する
+            if self.current_button and not self.is_dragging and not self.is_paused:
+                # 曲が最後まで再生し終わった時だけリセット
                 self.current_button.config(text="▶")
-                self._hide_seek_bar()
                 self.current_playing_path = None
                 self.current_button = None
                 self.current_seek_start = 0
+                self.seek_bar.set(0)
 
         self.after(200, self.check_music_status) # 頻度を上げて滑らかに
 
@@ -150,11 +177,11 @@ class LibraryPage(tk.Frame):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
-        # 引数に "library_file" を指定して呼び出す
-        files = self.music_manager.get_mp3_files("library_file")
+        # 引数に "library" を指定して呼び出す
+        files = self.music_manager.get_mp3_files("library")
 
         if not files:
-            tk.Label(self.scrollable_frame, text="library_fileフォルダにMP3がありません", 
+            tk.Label(self.scrollable_frame, text="libraryフォルダにMP3がありません", 
                      bg=self.theme["bg"], fg="gray").pack(pady=20)
             return
 
