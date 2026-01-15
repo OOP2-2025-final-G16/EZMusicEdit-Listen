@@ -12,6 +12,7 @@ from edit.timeline_helper import TimelineController
 class EditPage(tk.Frame):
     def __init__(self, parent, theme, config):
         super().__init__(parent, bg=theme["bg"])
+        self.config_data = config
         
         tk.Label(self, text="✂️ EDIT & ADD", font=("Arial", 20, "bold"), 
                  bg=theme["bg"], fg=theme["fg"]).pack(pady=20)
@@ -245,7 +246,8 @@ class EditPage(tk.Frame):
 
     # ---------- ファイル選択 ----------
     def _get_library_dir(self) -> Path:
-        lib = Path(self.config_data.get("library_dir", "library"))
+        lib = Path(self.config_data.get("library_dir", "library_file"
+        ""))
         if not lib.is_absolute():
             base = Path(__file__).resolve().parent
             lib = base / lib
