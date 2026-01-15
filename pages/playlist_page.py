@@ -31,6 +31,9 @@ class PlaylistPage(tk.Frame):
         self.current_playing_playlist = None  # 現在再生中のプレイリスト名
         self.current_track_index = 0  # 現在再生中の曲のインデックス
         self.is_playing = False  # 再生中かどうか
+        self.current_playlist_button = None  # 一覧の再生ボタン参照
+        self.current_track_path = None  # 単曲再生中のファイルパス
+        self.current_track_button = None  # 単曲再生中のボタン参照
         
         # ライブラリ機能用の変数
         self.library_folder = None  # ライブラリフォルダのパス
@@ -81,8 +84,14 @@ class PlaylistPage(tk.Frame):
             lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         )
         
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.scrollable_window = self.canvas.create_window(
+            (0, 0), window=self.scrollable_frame, anchor="nw"
+        )
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.bind(
+            "<Configure>",
+            lambda e: self.canvas.itemconfig(self.scrollable_window, width=e.width)
+        )
         
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
@@ -118,15 +127,6 @@ class PlaylistPage(tk.Frame):
         tk.Button(form_frame, text="+ 新規作成", bg=c.COLOR_BTN_BG, fg=c.COLOR_BTN_TEXT,
                   command=self.create_new_playlist, width=12).grid(row=0, column=2)
         
-        # 再生・停止ボタン
-        play_frame = tk.Frame(self.button_frame, bg=self.theme["bg"])
-        play_frame.pack(pady=(5, 0))
-        
-        tk.Button(play_frame, text="▶ 再生", bg=c.COLOR_BTN_BG, fg=c.COLOR_BTN_TEXT,
-                  command=self.play_selected_playlist, width=10).pack(side=tk.LEFT, padx=5)
-        tk.Button(play_frame, text="■ 停止", bg=c.COLOR_BTN_BG, fg=c.COLOR_BTN_TEXT,
-                  command=self.stop_playlist, width=10).pack(side=tk.LEFT, padx=5)
-        
         # スクロールエリアをクリア
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
@@ -140,8 +140,12 @@ class PlaylistPage(tk.Frame):
             row.is_selected = False
             row.playlist_name = pl_name
             
-            label = tk.Label(row, text=f"▶ {len(files)}曲 {pl_name}", 
-                           bg=c.COLOR_LIST_BG, fg=c.COLOR_LIST_TEXT, 
+            play_btn = tk.Button(row, text="▶", width=5)
+            play_btn.config(command=lambda name=pl_name, btn=play_btn: self.toggle_playlist_play(name, btn))
+            play_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+            label = tk.Label(row, text=f"{len(files)}曲 {pl_name}",
+                           bg=c.COLOR_LIST_BG, fg=c.COLOR_LIST_TEXT,
                            font=("Arial", 12), anchor="w", cursor="hand2")
             label.pack(side=tk.LEFT, fill=tk.X, expand=True)
             
@@ -213,8 +217,14 @@ class PlaylistPage(tk.Frame):
             lambda e: playlist_canvas.configure(scrollregion=playlist_canvas.bbox("all"))
         )
         
-        playlist_canvas.create_window((0, 0), window=playlist_scrollable, anchor="nw")
+        playlist_window = playlist_canvas.create_window(
+            (0, 0), window=playlist_scrollable, anchor="nw"
+        )
         playlist_canvas.configure(yscrollcommand=playlist_scrollbar.set)
+        playlist_canvas.bind(
+            "<Configure>",
+            lambda e: playlist_canvas.itemconfig(playlist_window, width=e.width)
+        )
         
         playlist_canvas.pack(side="left", fill="both", expand=True)
         playlist_scrollbar.pack(side="right", fill="y")
@@ -235,8 +245,8 @@ class PlaylistPage(tk.Frame):
                 
                 # 再生ボタン
                 play_btn = tk.Button(row, text="▶", bg="white", fg="black",
-                                    font=("Arial", 10, "bold"), width=3, height=1,
-                                    command=lambda path=file_path: self.music_manager.play_music(path))
+                                    font=("Arial", 10, "bold"), width=3, height=1)
+                play_btn.config(command=lambda path=file_path, btn=play_btn: self.toggle_track_play(path, btn))
                 play_btn.pack(side=tk.LEFT, padx=(0, 5))
                 
                 # チェックボックス
@@ -299,8 +309,14 @@ class PlaylistPage(tk.Frame):
             lambda e: library_canvas.configure(scrollregion=library_canvas.bbox("all"))
         )
         
-        library_canvas.create_window((0, 0), window=library_scrollable, anchor="nw")
+        library_window = library_canvas.create_window(
+            (0, 0), window=library_scrollable, anchor="nw"
+        )
         library_canvas.configure(yscrollcommand=library_scrollbar.set)
+        library_canvas.bind(
+            "<Configure>",
+            lambda e: library_canvas.itemconfig(library_window, width=e.width)
+        )
         
         library_canvas.pack(side="left", fill="both", expand=True)
         library_scrollbar.pack(side="right", fill="y")
@@ -320,8 +336,8 @@ class PlaylistPage(tk.Frame):
                 
                 # 再生ボタン
                 play_btn = tk.Button(row, text="▶", bg="white", fg="black",
-                                    font=("Arial", 10, "bold"), width=3, height=1,
-                                    command=lambda path=file_path: self.music_manager.play_music(path))
+                                    font=("Arial", 10, "bold"), width=3, height=1)
+                play_btn.config(command=lambda path=file_path, btn=play_btn: self.toggle_track_play(path, btn))
                 play_btn.pack(side=tk.LEFT, padx=(0, 5))
                 
                 # チェックボックス
@@ -612,32 +628,33 @@ class PlaylistPage(tk.Frame):
     # 再生機能
     # ==========================================
     
-    def play_selected_playlist(self):
+    def toggle_playlist_play(self, playlist_name, button):
         """
-        選択されたプレイリストを順次再生
-        プレイリスト内の全ての曲を順番に再生する
+        一覧の再生ボタンでプレイリストの再生/停止を切り替える
         """
-        if not self.selected_playlist_for_play:
-            messagebox.showinfo("選択なし", "再生するプレイリストを選択してください。")
+        if self.is_playing and self.current_playing_playlist == playlist_name:
+            self.stop_playlist()
+            button.config(text="▶")
             return
-        
-        if self.selected_playlist_for_play not in self.playlists:
+
+        if playlist_name not in self.playlists:
             return
-        
-        files = self.playlists[self.selected_playlist_for_play]
+
+        files = self.playlists[playlist_name]
         if not files:
             messagebox.showinfo("曲なし", "プレイリストに曲がありません。")
             return
-        
-        # 再生状態を初期化
-        self.current_playing_playlist = self.selected_playlist_for_play
+
+        if self.current_playlist_button and self.current_playlist_button != button:
+            self.current_playlist_button.config(text="▶")
+
+        self.current_playlist_button = button
+        self.current_playing_playlist = playlist_name
         self.current_track_index = 0
         self.is_playing = True
-        
-        # 最初の曲を再生
+        button.config(text="■")
+
         self._play_current_track()
-        
-        # 定期的に再生状態をチェック
         self._check_playback_status()
     
     def _play_current_track(self):
@@ -651,6 +668,9 @@ class PlaylistPage(tk.Frame):
         if self.current_track_index >= len(files):
             # 全ての曲を再生完了
             self.is_playing = False
+            if self.current_playlist_button:
+                self.current_playlist_button.config(text="▶")
+                self.current_playlist_button = None
             self.title_label.config(text="🎵 プレイリスト")
             return
         
@@ -663,6 +683,9 @@ class PlaylistPage(tk.Frame):
         except Exception as e:
             messagebox.showerror("再生エラー", f"再生できませんでした: {e}")
             self.is_playing = False
+            if self.current_playlist_button:
+                self.current_playlist_button.config(text="▶")
+                self.current_playlist_button = None
     
     def _check_playback_status(self):
         """
@@ -683,10 +706,55 @@ class PlaylistPage(tk.Frame):
                 # プレイリスト終了
                 self.is_playing = False
                 self.title_label.config(text="🎵 プレイリスト")
+                if self.current_playlist_button:
+                    self.current_playlist_button.config(text="▶")
+                    self.current_playlist_button = None
                 return
         
         # 100ミリ秒後に再度チェック
         self.after(100, self._check_playback_status)
+
+    def toggle_track_play(self, file_path, button):
+        """
+        プレイリスト詳細画面の各曲ボタンで単曲再生/停止を切り替える
+        """
+        if self.is_playing:
+            self.stop_playlist()
+
+        if self.current_track_path == file_path and self.music_manager.is_playing():
+            self.music_manager.stop_music()
+            button.config(text="▶")
+            self.current_track_path = None
+            self.current_track_button = None
+            return
+
+        if self.current_track_button and self.current_track_button != button:
+            self.current_track_button.config(text="▶")
+
+        try:
+            self.music_manager.play_music(file_path)
+            button.config(text="■")
+            self.current_track_path = file_path
+            self.current_track_button = button
+            self.after(200, self._check_single_track_status)
+        except Exception as e:
+            messagebox.showerror("再生エラー", f"再生できませんでした: {e}")
+            button.config(text="▶")
+
+    def _check_single_track_status(self):
+        """
+        単曲再生の終了を監視してボタン表示を戻す
+        """
+        if not self.current_track_button:
+            return
+
+        if not self.music_manager.is_playing():
+            self.current_track_button.config(text="▶")
+            self.current_track_button = None
+            self.current_track_path = None
+            return
+
+        self.after(200, self._check_single_track_status)
     
     def stop_playlist(self):
         """
@@ -696,6 +764,13 @@ class PlaylistPage(tk.Frame):
         self.is_playing = False
         self.current_playing_playlist = None
         self.current_track_index = 0
+        if self.current_playlist_button:
+            self.current_playlist_button.config(text="▶")
+            self.current_playlist_button = None
+        if self.current_track_button:
+            self.current_track_button.config(text="▶")
+            self.current_track_button = None
+            self.current_track_path = None
         # 一覧画面の場合はタイトルをリセット
         if self.view_mode == "list":
             self.title_label.config(text="🎵 プレイリスト")
