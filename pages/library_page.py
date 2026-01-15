@@ -177,7 +177,11 @@ class LibraryPage(tk.Frame):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
+<<<<<<< Updated upstream:library_page.py
         # 引数に "library_file" を指定して呼び出す
+=======
+        # 引数に "library" を指定して呼び出す
+>>>>>>> Stashed changes:pages/library_page.py
         files = self.music_manager.get_mp3_files("library_file")
 
         if not files:
