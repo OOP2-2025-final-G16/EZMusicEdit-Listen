@@ -12,6 +12,7 @@ from edit.timeline_helper import TimelineController
 class EditPage(tk.Frame):
     def __init__(self, parent, theme, config):
         super().__init__(parent, bg=theme["bg"])
+        self.config_data = config
         
         tk.Label(self, text="✂️ EDIT & ADD", font=("Arial", 20, "bold"), 
                  bg=theme["bg"], fg=theme["fg"]).pack(pady=20)
