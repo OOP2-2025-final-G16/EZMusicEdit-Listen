@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 import pygame
-from library import library  # library.pyから読み込み
+from misc.library import library  # library.pyから読み込み
 
 class LibraryPage(tk.Frame):
     def __init__(self, parent, theme, config):

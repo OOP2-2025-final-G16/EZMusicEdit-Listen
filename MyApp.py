@@ -1,8 +1,8 @@
 import tkinter as tk
-from library_page import LibraryPage
-from playlist_page import PlaylistPage
-from edit_page import EditPage
-import constants as c
+from pages.library_page import LibraryPage
+from pages.playlist_page import PlaylistPage
+from pages.edit_page import EditPage
+import misc.constants as c
 
 class MyApp:
     def __init__(self, root):
