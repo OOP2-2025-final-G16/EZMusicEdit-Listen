@@ -22,11 +22,12 @@ class EditPage(tk.Frame):
 
         self.file1_var = tk.StringVar()
         self.file2_var = tk.StringVar()
+        self.file3_var = tk.StringVar()
 
         tk.Label(form, text="ファイル1(mp3/mp4):", bg=theme["bg"], fg=theme["fg"]).grid(
             row=0, column=0, pady=5, padx=5, sticky="e"
         )
-        ttk.Entry(form, textvariable=self.file1_var, width=40).grid(
+        ttk.Entry(form, textvariable=self.file1_var, width=10).grid(
             row=0, column=1, pady=5, padx=5
         )
         ttk.Button(form, text="参照...", command=self.browse_file1).grid(
@@ -36,81 +37,110 @@ class EditPage(tk.Frame):
         tk.Label(form, text="ファイル2(mp3/mp4):", bg=theme["bg"], fg=theme["fg"]).grid(
             row=1, column=0, pady=5, padx=5, sticky="e"
         )
-        ttk.Entry(form, textvariable=self.file2_var, width=40).grid(
+        ttk.Entry(form, textvariable=self.file2_var, width=10).grid(
             row=1, column=1, pady=5, padx=5
         )
         ttk.Button(form, text="参照...", command=self.browse_file2).grid(
             row=1, column=2, padx=5, pady=5
         )
 
-        # ---------- 切り取りパラメータ ----------
-        self.start_vars = [tk.DoubleVar(value=0.0) for _ in range(2)]
-        self.end_vars = [tk.DoubleVar(value=0.0) for _ in range(2)]
-        self.duration_vars = [tk.DoubleVar(value=0.0) for _ in range(2)]
-        self.total_length_vars = [tk.DoubleVar(value=0.0) for _ in range(2)]
-
-        tk.Label(form, text="", bg=theme["bg"], fg=theme["fg"]).grid(
+        tk.Label(form, text="ファイル3(mp3/mp4):", bg=theme["bg"], fg=theme["fg"]).grid(
             row=2, column=0, pady=5, padx=5, sticky="e"
         )
+        ttk.Entry(form, textvariable=self.file3_var, width=10).grid(
+            row=2, column=1, pady=5, padx=5
+        )
+        ttk.Button(form, text="参照...", command=self.browse_file3).grid(
+            row=2, column=2, padx=5, pady=5
+        )
+
+        # ---------- 切り取りパラメータ ----------
+        self.start_vars = [tk.DoubleVar(value=0.0) for _ in range(3)]
+        self.end_vars = [tk.DoubleVar(value=0.0) for _ in range(3)]
+        self.duration_vars = [tk.DoubleVar(value=0.0) for _ in range(3)]
+        self.total_length_vars = [tk.DoubleVar(value=0.0) for _ in range(3)]
+
+        tk.Label(form, text="", bg=theme["bg"], fg=theme["fg"]).grid(
+            row=3, column=0, pady=5, padx=5, sticky="e"
+        )
         tk.Label(form, text="ファイル1", bg=theme["bg"], fg=theme["fg"]).grid(
-            row=2, column=1, pady=5, padx=5, sticky="w"
+            row=3, column=1, pady=5, padx=5, sticky="w"
         )
         tk.Label(form, text="ファイル2", bg=theme["bg"], fg=theme["fg"]).grid(
-            row=2, column=2, pady=5, padx=5, sticky="w"
+            row=3, column=2, pady=5, padx=5, sticky="w"
+        )
+        tk.Label(form, text="ファイル3", bg=theme["bg"], fg=theme["fg"]).grid(
+            row=3, column=3, pady=5, padx=5, sticky="w"
         )
 
         # 開始
         tk.Label(form, text="開始位置(秒):", bg=theme["bg"], fg=theme["fg"]).grid(
-            row=3, column=0, pady=5, padx=5, sticky="e"
+            row=4, column=0, pady=5, padx=5, sticky="e"
         )
         ttk.Entry(form, textvariable=self.start_vars[0], width=10).grid(
-            row=3, column=1, sticky="w", pady=5, padx=5
+            row=4, column=1, pady=5, padx=5, sticky="w"
         )
         ttk.Entry(form, textvariable=self.start_vars[1], width=10).grid(
-            row=3, column=2, sticky="w", pady=5, padx=5
+            row=4, column=2, pady=5, padx=5, sticky="w"
+        )
+        ttk.Entry(form, textvariable=self.start_vars[2], width=10).grid(
+            row=4, column=3, pady=5, padx=5, sticky="w"
         )
 
         # 終了
         tk.Label(form, text="終了位置(秒):", bg=theme["bg"], fg=theme["fg"]).grid(
-            row=4, column=0, pady=5, padx=5, sticky="e"
+            row=5, column=0, pady=5, padx=5, sticky="e"
         )
         ttk.Entry(form, textvariable=self.end_vars[0], width=10).grid(
-            row=4, column=1, sticky="w", pady=5, padx=5
+            row=5, column=1, pady=5, padx=5, sticky="w"
         )
         ttk.Entry(form, textvariable=self.end_vars[1], width=10).grid(
-            row=4, column=2, sticky="w", pady=5, padx=5
+            row=5, column=2, pady=5, padx=5, sticky="w"
+        )
+        ttk.Entry(form, textvariable=self.end_vars[2], width=10).grid(
+            row=5, column=3, pady=5, padx=5, sticky="w"
         )
 
         # 長さ
         tk.Label(form, text="長さ(秒):", bg=theme["bg"], fg=theme["fg"]).grid(
-            row=5, column=0, pady=5, padx=5, sticky="e"
+            row=6, column=0, pady=5, padx=5, sticky="e"
         )
         ttk.Entry(form, textvariable=self.duration_vars[0], width=10).grid(
-            row=5, column=1, sticky="w", pady=5, padx=5
+            row=6, column=1, pady=5, padx=5, sticky="w"
         )
         ttk.Entry(form, textvariable=self.duration_vars[1], width=10).grid(
-            row=5, column=2, sticky="w", pady=5, padx=5
+            row=6, column=2, pady=5, padx=5, sticky="w"
+        )
+        ttk.Entry(form, textvariable=self.duration_vars[2], width=10).grid(
+            row=6, column=3, pady=5, padx=5, sticky="w"
         )
 
         # 曲の長さ（表示のみ）
         tk.Label(form, text="曲の長さ(秒):", bg=theme["bg"], fg=theme["fg"]).grid(
-            row=6, column=0, pady=5, padx=5, sticky="e"
+            row=7, column=0, pady=5, padx=5, sticky="e"
         )
         ttk.Entry(
             form,
             textvariable=self.total_length_vars[0],
             width=10,
             state="readonly",
-        ).grid(row=6, column=1, sticky="w", pady=5, padx=5)
+        ).grid(row=7, column=1, pady=5, padx=5, sticky="w")
         ttk.Entry(
             form,
             textvariable=self.total_length_vars[1],
             width=10,
             state="readonly",
-        ).grid(row=6, column=2, sticky="w", pady=5, padx=5)
+        ).grid(row=7, column=2, pady=5, padx=5, sticky="w")
+        ttk.Entry(
+            form,
+            textvariable=self.total_length_vars[2],
+            width=10,
+            state="readonly",
+        ).grid(row=7, column=3, pady=5, padx=5, sticky="w")
 
         # 内部状態（切り取り範囲）
         self._file_ranges = [
+            {"start": 0.0, "duration": 0.0, "total": 0.0},
             {"start": 0.0, "duration": 0.0, "total": 0.0},
             {"start": 0.0, "duration": 0.0, "total": 0.0},
         ]
@@ -184,7 +214,7 @@ class EditPage(tk.Frame):
         ).pack(anchor="w", padx=20)
 
         self.timeline_canvases = []
-        for idx in range(2):
+        for idx in range(3):
             row = tk.Frame(editor_frame, bg=theme["bg"])
             row.pack(fill=tk.X, padx=20, pady=2)
 
@@ -222,7 +252,7 @@ class EditPage(tk.Frame):
         self.timeline_controller.bind_canvas_events()
 
         # trace で数値入力とタイムラインを同期
-        for i in range(2):
+        for i in range(3):
             self.start_vars[i].trace_add(
                 "write",
                 lambda *_, idx=i: self.timeline_controller.sync_from_entries(
@@ -277,6 +307,18 @@ class EditPage(tk.Frame):
             self._active_index = 1
             self._update_total_length_from_file(1, path)
 
+    def browse_file3(self) -> None:
+        library_dir = self._get_library_dir()
+        path = filedialog.askopenfilename(
+            title="ファイル3の音声ファイルを選択",
+            initialdir=str(library_dir),
+            filetypes=[("Audio files", "*.mp3 *.mp4"), ("All files", "*.*")],
+        )
+        if path:
+            self.file3_var.set(path)
+            self._active_index = 2
+            self._update_total_length_from_file(2, path)
+
     # ---------- 長さ取得 ----------
     def _update_total_length_from_file(self, index: int, path: str) -> None:
         audio_path = Path(path)
@@ -297,6 +339,8 @@ class EditPage(tk.Frame):
             targets.append((0, self.file1_var))
         if self.file2_var.get().strip():
             targets.append((1, self.file2_var))
+        if self.file3_var.get().strip():
+            targets.append((2, self.file3_var))
 
         if not targets:
             messagebox.showwarning(
@@ -325,6 +369,8 @@ class EditPage(tk.Frame):
             targets.append(self.file1_var)
         if self.file2_var.get().strip():
             targets.append(self.file2_var)
+        if self.file3_var.get().strip():
+            targets.append(self.file3_var)
 
         if not targets:
             messagebox.showwarning("入力エラー", "変換するファイルを1つ以上入力してください。")
