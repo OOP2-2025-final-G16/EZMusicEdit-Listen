@@ -8,8 +8,11 @@ pygame.mixer.init()
 class library:
     def get_mp3_files(self, folder_name="library"): # デフォルトを library に変更
         """実行ファイルと同じ階層にある指定フォルダからMP3を取得"""
-        # プログラムがある場所の絶対パスを取得
-        base_path = os.path.dirname(os.path.abspath(__file__))
+        # library.py がある場所 (misc/) を取得
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # 1つ上の階層（プロジェクトのルート）の絶対パスを取得
+        base_path = os.path.dirname(current_dir)
         
         # 指定されたフォルダ名（library_file）でパスを作成
         target_dir = os.path.join(base_path, folder_name)

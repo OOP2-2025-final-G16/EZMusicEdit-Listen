@@ -177,11 +177,11 @@ class LibraryPage(tk.Frame):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
-        # 引数に "library" を指定して呼び出す
-        files = self.music_manager.get_mp3_files("library")
+        # 引数に "library_file" を指定して呼び出す
+        files = self.music_manager.get_mp3_files("library_file")
 
         if not files:
-            tk.Label(self.scrollable_frame, text="libraryフォルダにMP3がありません", 
+            tk.Label(self.scrollable_frame, text="library_fileフォルダにMP3がありません", 
                      bg=self.theme["bg"], fg="gray").pack(pady=20)
             return
 
