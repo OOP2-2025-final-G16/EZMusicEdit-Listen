@@ -3,8 +3,8 @@ from tkinter import filedialog, messagebox
 import xml.etree.ElementTree as ET
 import os
 import glob
-import misc.constants as c  # 定数をインポート
-from misc.library import library
+import constants as c  # 定数をインポート
+from library import library
 
 class PlaylistPage(tk.Frame):
     """
@@ -12,6 +12,7 @@ class PlaylistPage(tk.Frame):
     - プレイリストの作成、編集、削除
     - プレイリスト内の曲の追加・削除
     - プレイリストの再生機能
+    - ライブラリからの曲追加機能
     """
     
     def __init__(self, parent, theme, config):
@@ -21,7 +22,7 @@ class PlaylistPage(tk.Frame):
         # プレイリスト管理用の変数
         self.playlists = {}  # {プレイリスト名: [ファイルパスリスト]}
         self.selected_playlist = None  # 編集中のプレイリスト名
-        self.selected_file_index = None  # プレイリスト内の選択されたファイルインデックス
+        self.selected_file_indices = []  # プレイリスト内の選択されたファイルインデックスリスト（複数選択対応）
         self.selected_playlist_for_play = None  # 再生用に選択されたプレイリスト名
         self.view_mode = "list"  # 表示モード: "list"（一覧）, "detail"（詳細）
         self.music_manager = library()  # 音楽再生用のライブラリ
@@ -30,6 +31,12 @@ class PlaylistPage(tk.Frame):
         self.current_playing_playlist = None  # 現在再生中のプレイリスト名
         self.current_track_index = 0  # 現在再生中の曲のインデックス
         self.is_playing = False  # 再生中かどうか
+        
+        # ライブラリ機能用の変数
+        self.library_folder = None  # ライブラリフォルダのパス
+        self.library_files = []  # ライブラリ内のmp3ファイルリスト
+        self.selected_library_file = None  # ライブラリで選択されたファイル
+        self.selected_library_file_indices = []  # ライブラリで選択されたファイルのインデックスリスト（複数選択対応）
         
         # === UI要素の配置 ===
         
@@ -53,6 +60,10 @@ class PlaylistPage(tk.Frame):
         
         # 既存のXMLファイルからプレイリストを読み込み
         self.load_existing_playlists()
+        
+        # library_fileフォルダからmp3/mp4ファイルを自動ロード
+        self._load_library_files()
+        
         # プレイリスト一覧画面を表示
         self.show_playlist_list()
     
@@ -145,7 +156,7 @@ class PlaylistPage(tk.Frame):
             row.bind("<Button-1>", on_click)
             label.bind("<Double-Button-1>", on_double_click)
             row.bind("<Double-Button-1>", on_double_click)
-    
+
     # ==========================================
     # プレイリスト詳細表示（編集画面）
     # ==========================================
@@ -155,6 +166,7 @@ class PlaylistPage(tk.Frame):
         プレイリスト詳細画面を表示（編集モード）
         - 戻るボタン、追加・削除ボタン
         - プレイリスト内の曲一覧（クリックで選択可能）
+        - ライブラリファイル一覧
         """
         self.view_mode = "detail"
         self.selected_playlist = playlist_name
@@ -169,41 +181,185 @@ class PlaylistPage(tk.Frame):
                   command=self.show_playlist_list, width=10).pack(side=tk.LEFT, padx=5)
         
         # 追加・削除ボタン
-        tk.Button(self.button_frame, text="追加", bg=c.COLOR_BTN_BG, fg=c.COLOR_BTN_TEXT,
-                  command=self.add_files, width=10).pack(side=tk.LEFT, padx=5)
-        tk.Button(self.button_frame, text="削除", bg=c.COLOR_BTN_BG, fg=c.COLOR_BTN_TEXT,
+        tk.Button(self.button_frame, text="➕ 追加", bg=c.COLOR_BTN_BG, fg=c.COLOR_BTN_TEXT,
+                  command=self.add_library_file_to_playlist, width=10).pack(side=tk.LEFT, padx=5)
+        tk.Button(self.button_frame, text="❌ 削除", bg=c.COLOR_BTN_BG, fg=c.COLOR_BTN_TEXT,
                   command=self.remove_selected, width=10).pack(side=tk.LEFT, padx=5)
         
         # スクロールエリアをクリア
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
         
-        # プレイリスト内容を表示
-        if playlist_name not in self.playlists:
-            return
+        # メインコンテナを2分割（プレイリストパネル + ライブラリパネル）
+        main_container = tk.Frame(self.scrollable_frame, bg=c.COLOR_LIST_BG)
+        main_container.pack(fill=tk.BOTH, expand=True)
         
-        files = self.playlists[playlist_name]
-        for idx, file_path in enumerate(files):
-            filename = os.path.basename(file_path)
-            
-            row = tk.Frame(self.scrollable_frame, bg=c.COLOR_LIST_BG)
-            row.pack(fill=tk.X, pady=2, padx=5)
-            
-            # 選択状態を管理するための内部フレーム
-            row.is_selected = False
-            row.file_index = idx
-            
-            label = tk.Label(row, text=f"▶ {filename}", 
-                    bg=c.COLOR_LIST_BG, fg=c.COLOR_LIST_TEXT, 
-                    font=("Arial", 12), anchor="w", cursor="hand2")
-            label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            
-            # クリックで選択/解除
-            def on_click(e, frame=row, index=idx):
-                self.toggle_file_selection(frame, index)
-            
-            label.bind("<Button-1>", on_click)
-            row.bind("<Button-1>", on_click)
+        # ===== プレイリスト表示パネル =====
+        playlist_label = tk.Label(main_container, text="📋 プレイリスト", 
+                                 bg=c.COLOR_LIST_BG, fg="white", font=("Arial", 12, "bold"))
+        playlist_label.pack(fill=tk.X, padx=5, pady=(5, 2))
+        
+        playlist_frame = tk.Frame(main_container, bg=c.COLOR_LIST_BG, height=200)
+        playlist_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        playlist_frame.pack_propagate(False)
+        
+        # プレイリスト用スクロール
+        playlist_canvas = tk.Canvas(playlist_frame, bg=c.COLOR_LIST_BG, highlightthickness=0)
+        playlist_scrollbar = tk.Scrollbar(playlist_frame, orient="vertical", command=playlist_canvas.yview)
+        playlist_scrollable = tk.Frame(playlist_canvas, bg=c.COLOR_LIST_BG)
+        
+        playlist_scrollable.bind(
+            "<Configure>",
+            lambda e: playlist_canvas.configure(scrollregion=playlist_canvas.bbox("all"))
+        )
+        
+        playlist_canvas.create_window((0, 0), window=playlist_scrollable, anchor="nw")
+        playlist_canvas.configure(yscrollcommand=playlist_scrollbar.set)
+        
+        playlist_canvas.pack(side="left", fill="both", expand=True)
+        playlist_scrollbar.pack(side="right", fill="y")
+        
+        # プレイリスト内容を表示
+        if playlist_name in self.playlists:
+            files = self.playlists[playlist_name]
+            for idx, file_path in enumerate(files):
+                filename = os.path.basename(file_path)
+                
+                row = tk.Frame(playlist_scrollable, bg=c.COLOR_LIST_BG)
+                row.pack(fill=tk.X, pady=2, padx=5)
+                
+                # 選択状態を管理するための内部フレーム
+                row.is_selected = False
+                row.file_index = idx
+                row.file_path = file_path
+                
+                # 再生ボタン
+                play_btn = tk.Button(row, text="▶", bg="white", fg="black",
+                                    font=("Arial", 10, "bold"), width=3, height=1,
+                                    command=lambda path=file_path: self.music_manager.play_music(path))
+                play_btn.pack(side=tk.LEFT, padx=(0, 5))
+                
+                # チェックボックス
+                checkbox = tk.Frame(row, bg=c.COLOR_LIST_BG, width=20, height=20)
+                checkbox.pack(side=tk.LEFT, padx=(0, 5))
+                checkbox_label = tk.Label(checkbox, text="☐", bg=c.COLOR_LIST_BG, fg=c.COLOR_LIST_TEXT,
+                                         font=("Arial", 14), cursor="hand2")
+                checkbox_label.pack()
+                
+                # チェックボックスのクリック処理
+                def on_checkbox_click(e, frame=row, index=idx, check_label=checkbox_label):
+                    self.toggle_file_selection(frame, index)
+                    # チェック状態を反映
+                    if frame.is_selected:
+                        check_label.config(text="☑")
+                    else:
+                        check_label.config(text="☐")
+                
+                checkbox_label.bind("<Button-1>", on_checkbox_click)
+                checkbox.bind("<Button-1>", on_checkbox_click)
+                
+                # 曲名ラベル
+                label = tk.Label(row, text=filename, 
+                        bg=c.COLOR_LIST_BG, fg=c.COLOR_LIST_TEXT, 
+                        font=("Arial", 11), anchor="w", cursor="hand2")
+                label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                
+                # ラベルクリックで選択
+                def on_click(e, frame=row, index=idx, check_label=checkbox_label):
+                    self.toggle_file_selection(frame, index)
+                    # チェック状態を反映
+                    if frame.is_selected:
+                        check_label.config(text="☑")
+                    else:
+                        check_label.config(text="☐")
+                
+                label.bind("<Button-1>", on_click)
+                row.bind("<Button-1>", on_click)
+        
+        # ===== セパレータ =====
+        separator = tk.Frame(main_container, height=2, bg=c.COLOR_SIDEBAR, bd=0, highlightthickness=0)
+        separator.pack(fill=tk.X, padx=10, pady=5)
+        
+        # ===== ライブラリパネル =====
+        library_label = tk.Label(main_container, text="🎵 ライブラリ", 
+                                bg=c.COLOR_LIST_BG, fg="white", font=("Arial", 12, "bold"))
+        library_label.pack(fill=tk.X, padx=5, pady=(5, 2))
+        
+        library_frame = tk.Frame(main_container, bg=c.COLOR_LIST_BG, height=200)
+        library_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
+        library_frame.pack_propagate(False)
+        
+        # ライブラリ用スクロール
+        library_canvas = tk.Canvas(library_frame, bg=c.COLOR_LIST_BG, highlightthickness=0)
+        library_scrollbar = tk.Scrollbar(library_frame, orient="vertical", command=library_canvas.yview)
+        library_scrollable = tk.Frame(library_canvas, bg=c.COLOR_LIST_BG)
+        
+        library_scrollable.bind(
+            "<Configure>",
+            lambda e: library_canvas.configure(scrollregion=library_canvas.bbox("all"))
+        )
+        
+        library_canvas.create_window((0, 0), window=library_scrollable, anchor="nw")
+        library_canvas.configure(yscrollcommand=library_scrollbar.set)
+        
+        library_canvas.pack(side="left", fill="both", expand=True)
+        library_scrollbar.pack(side="right", fill="y")
+        
+        # ライブラリファイルを表示
+        if self.library_files:
+            for idx, file_path in enumerate(self.library_files):
+                filename = os.path.basename(file_path)
+                
+                row = tk.Frame(library_scrollable, bg=c.COLOR_LIST_BG)
+                row.pack(fill=tk.X, pady=2, padx=5)
+                
+                # 選択状態を管理
+                row.is_selected = False
+                row.file_index = idx
+                row.file_path = file_path
+                
+                # 再生ボタン
+                play_btn = tk.Button(row, text="▶", bg="white", fg="black",
+                                    font=("Arial", 10, "bold"), width=3, height=1,
+                                    command=lambda path=file_path: self.music_manager.play_music(path))
+                play_btn.pack(side=tk.LEFT, padx=(0, 5))
+                
+                # チェックボックス
+                checkbox = tk.Frame(row, bg=c.COLOR_LIST_BG, width=20, height=20)
+                checkbox.pack(side=tk.LEFT, padx=(0, 5))
+                checkbox_label = tk.Label(checkbox, text="☐", bg=c.COLOR_LIST_BG, fg=c.COLOR_LIST_TEXT,
+                                         font=("Arial", 14), cursor="hand2")
+                checkbox_label.pack()
+                
+                # チェックボックスのクリック処理
+                def on_checkbox_click(e, frame=row, index=idx, check_label=checkbox_label):
+                    self.toggle_library_file_selection(frame, index)
+                    # チェック状態を反映
+                    if frame.is_selected:
+                        check_label.config(text="☑")
+                    else:
+                        check_label.config(text="☐")
+                
+                checkbox_label.bind("<Button-1>", on_checkbox_click)
+                checkbox.bind("<Button-1>", on_checkbox_click)
+                
+                # ファイル名ラベル
+                label = tk.Label(row, text=filename, 
+                        bg=c.COLOR_LIST_BG, fg=c.COLOR_LIST_TEXT, 
+                        font=("Arial", 11), anchor="w", cursor="hand2")
+                label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                
+                # クリックで選択
+                def on_lib_click(e, frame=row, index=idx, check_label=checkbox_label):
+                    self.toggle_library_file_selection(frame, index)
+                    # チェック状態を反映
+                    if frame.is_selected:
+                        check_label.config(text="☑")
+                    else:
+                        check_label.config(text="☐")
+                
+                label.bind("<Button-1>", on_lib_click)
+                row.bind("<Button-1>", on_lib_click)
     
     # ==========================================
     # データ読み込み・保存
@@ -212,16 +368,24 @@ class PlaylistPage(tk.Frame):
     def load_existing_playlists(self):
         """
         既存のXMLプレイリストファイルを読み込み
-        カレントディレクトリの全.xmlファイルをスキャンして
+        playlist_fileフォルダ内の全.xmlファイルをスキャンして
         プレイリストデータとして読み込む
         """
-        xml_files = glob.glob("*.xml")
+        playlist_folder = "playlist_file"
+        
+        # フォルダが存在しない場合は作成
+        if not os.path.exists(playlist_folder):
+            os.makedirs(playlist_folder)
+        
+        # playlist_fileフォルダ内の全.xmlファイルを取得
+        xml_files = glob.glob(os.path.join(playlist_folder, "*.xml"))
         for xml_file in xml_files:
             try:
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
                 files = [f.get("path") for f in root.findall("file")]
-                playlist_name = os.path.splitext(xml_file)[0]
+                # ファイル名からplaylist_file/を除いたプレイリスト名を取得
+                playlist_name = os.path.splitext(os.path.basename(xml_file))[0]
                 self.playlists[playlist_name] = files
             except:
                 pass
@@ -277,25 +441,88 @@ class PlaylistPage(tk.Frame):
         self.save_playlist(self.selected_playlist)
         self.show_playlist_detail(self.selected_playlist)
     
+    def _load_library_files(self):
+        """
+        library_fileフォルダのmp3/mp4ファイルを自動ロード
+        """
+        library_folder = "library_file"
+        
+        # フォルダが存在しない場合は作成
+        if not os.path.exists(library_folder):
+            os.makedirs(library_folder)
+        
+        self.library_folder = library_folder
+        
+        # フォルダ内のmp3/mp4ファイルを取得
+        self.library_files = []
+        for ext in ["*.mp3", "*.mp4"]:
+            self.library_files.extend(glob.glob(os.path.join(library_folder, ext)))
+        
+        # ファイル名でソート
+        self.library_files.sort()
+    
+    def add_library_file_to_playlist(self):
+        """
+        ライブラリで選択されたファイル（複数可）をプレイリストに追加
+        """
+        if not self.selected_playlist:
+            messagebox.showinfo("プレイリスト未選択", "プレイリストを選択してください。")
+            return
+        
+        if not self.selected_library_file_indices:
+            messagebox.showinfo("ファイル未選択", "追加するファイルを選択してください。")
+            return
+        
+        # 選択された全てのファイルをプレイリストに追加
+        added_count = 0
+        skipped_count = 0
+        
+        for index in self.selected_library_file_indices:
+            if index >= len(self.library_files):
+                continue
+            
+            file_path = self.library_files[index]
+            if file_path not in self.playlists[self.selected_playlist]:
+                self.playlists[self.selected_playlist].append(file_path)
+                added_count += 1
+            else:
+                skipped_count += 1
+        
+        if added_count > 0:
+            self.save_playlist(self.selected_playlist)
+            self.show_playlist_detail(self.selected_playlist)
+            
+        # 結果メッセージ
+        if added_count > 0 and skipped_count == 0:
+            messagebox.showinfo("追加完了", f"{added_count}曲をプレイリストに追加しました。")
+        elif added_count > 0 and skipped_count > 0:
+            messagebox.showinfo("追加完了", f"{added_count}曲を追加しました。（{skipped_count}曲は重複のためスキップ）")
+        elif skipped_count > 0:
+            messagebox.showinfo("重複", "選択したファイルは全て既にプレイリストに含まれています。")
+    
     def remove_selected(self):
         """
-        選択された曲をプレイリストから削除
+        選択された曲をプレイリストから削除（複数削除対応）
         クリックで選択された曲をプレイリストから削除し、XMLを更新
         """
-        if self.selected_file_index is None:
+        if not self.selected_file_indices:
             messagebox.showinfo("選択なし", "削除する曲を選択してください。")
             return
         
         if not self.selected_playlist or self.selected_playlist not in self.playlists:
             return
         
-        # ファイルを削除
-        if 0 <= self.selected_file_index < len(self.playlists[self.selected_playlist]):
-            del self.playlists[self.selected_playlist][self.selected_file_index]
-            self.selected_file_index = None
-            self.save_playlist(self.selected_playlist)
-            self.show_playlist_detail(self.selected_playlist)
-            messagebox.showinfo("削除完了", "曲を削除しました。")
+        # 選択されたインデックスを降順でソート（後ろから削除してインデックスを狂わさない）
+        sorted_indices = sorted(self.selected_file_indices, reverse=True)
+        
+        for index in sorted_indices:
+            if 0 <= index < len(self.playlists[self.selected_playlist]):
+                del self.playlists[self.selected_playlist][index]
+        
+        self.selected_file_indices = []
+        self.save_playlist(self.selected_playlist)
+        self.show_playlist_detail(self.selected_playlist)
+        messagebox.showinfo("削除完了", f"{len(sorted_indices)}曲を削除しました。")
     
     # ==========================================
     # 選択状態管理
@@ -303,27 +530,63 @@ class PlaylistPage(tk.Frame):
     
     def toggle_file_selection(self, frame, file_index):
         """
-        プレイリスト詳細画面での曲の選択状態を切り替え
+        プレイリスト詳細画面での曲の選択状態を切り替え（複数選択対応）
         選択された曲の背景色を変更して視覚的にフィードバック
+        クリックするたびに選択/解除を切り替え
         """
-        # 前回選択されたアイテムの選択を解除
-        for widget in self.scrollable_frame.winfo_children():
-            if hasattr(widget, 'is_selected') and widget.is_selected:
-                widget.config(bg=c.COLOR_LIST_BG)
-                for child in widget.winfo_children():
-                    if isinstance(child, tk.Label):
-                        child.config(bg=c.COLOR_LIST_BG)
-                widget.is_selected = False
-        
-        # 新しいアイテムを選択
-        frame.config(bg=c.COLOR_HIGHLIGHT)
-        for child in frame.winfo_children():
-            if isinstance(child, tk.Label):
-                child.config(bg=c.COLOR_HIGHLIGHT)
-        frame.is_selected = True
-        self.selected_file_index = file_index
+        # 既に選択されているかチェック
+        if frame.is_selected:
+            # 選択解除
+            frame.config(bg=c.COLOR_LIST_BG)
+            for child in frame.winfo_children():
+                if isinstance(child, tk.Label):
+                    child.config(bg=c.COLOR_LIST_BG)
+            frame.is_selected = False
+            
+            # リストから削除
+            if file_index in self.selected_file_indices:
+                self.selected_file_indices.remove(file_index)
+        else:
+            # 選択
+            frame.config(bg=c.COLOR_HIGHLIGHT)
+            for child in frame.winfo_children():
+                if isinstance(child, tk.Label):
+                    child.config(bg=c.COLOR_HIGHLIGHT)
+            frame.is_selected = True
+            
+            # リストに追加
+            if file_index not in self.selected_file_indices:
+                self.selected_file_indices.append(file_index)
     
-    def toggle_playlist_selection(self, frame, playlist_name):
+    def toggle_library_file_selection(self, frame, file_index):
+        """
+        ライブラリパネルでのファイルの選択状態を切り替え（複数選択対応）
+        選択されたファイルの背景色を変更して視覚的にフィードバック
+        クリックするたびに選択/解除を切り替え
+        """
+        # 既に選択されているかチェック
+        if frame.is_selected:
+            # 選択解除
+            frame.config(bg=c.COLOR_LIST_BG)
+            for child in frame.winfo_children():
+                if isinstance(child, tk.Label):
+                    child.config(bg=c.COLOR_LIST_BG)
+            frame.is_selected = False
+            
+            # リストから削除
+            if file_index in self.selected_library_file_indices:
+                self.selected_library_file_indices.remove(file_index)
+        else:
+            # 選択
+            frame.config(bg=c.COLOR_HIGHLIGHT)
+            for child in frame.winfo_children():
+                if isinstance(child, tk.Label):
+                    child.config(bg=c.COLOR_HIGHLIGHT)
+            frame.is_selected = True
+            
+            # リストに追加
+            if file_index not in self.selected_library_file_indices:
+                self.selected_library_file_indices.append(file_index)
         """
         プレイリスト一覧画面でのプレイリストの選択状態を切り替え
         選択されたプレイリストの背景色を変更（再生用の選択）
@@ -451,8 +714,14 @@ class PlaylistPage(tk.Frame):
             <file order="2" path="/path/to/file2.mp3" />
         </playlist>
         
-        保存先: カレントディレクトリの「プレイリスト名.xml」
+        保存先: playlist_fileフォルダ内の「プレイリスト名.xml」
         """
+        playlist_folder = "playlist_file"
+        
+        # フォルダが存在しない場合は作成
+        if not os.path.exists(playlist_folder):
+            os.makedirs(playlist_folder)
+        
         root = ET.Element("playlist")
         root.set("name", playlist_name)
         
@@ -462,6 +731,6 @@ class PlaylistPage(tk.Frame):
             file_element.set("path", file_path)
         
         tree = ET.ElementTree(root)
-        xml_path = f"{playlist_name}.xml"
+        xml_path = os.path.join(playlist_folder, f"{playlist_name}.xml")
         tree.write(xml_path, encoding="utf-8", xml_declaration=True)
         print(f"プレイリストを保存しました: {xml_path}")
