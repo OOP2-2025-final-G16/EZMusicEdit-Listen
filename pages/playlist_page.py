@@ -3,8 +3,8 @@ from tkinter import filedialog, messagebox
 import xml.etree.ElementTree as ET
 import os
 import glob
-import constants as c  # 定数をインポート
-from library import library
+import misc.constants as c  # 定数をインポート
+from misc.library import library
 
 class PlaylistPage(tk.Frame):
     """
