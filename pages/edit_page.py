@@ -246,7 +246,8 @@ class EditPage(tk.Frame):
 
     # ---------- ファイル選択 ----------
     def _get_library_dir(self) -> Path:
-        lib = Path(self.config_data.get("library_dir", "library"))
+        lib = Path(self.config_data.get("library_dir", "library_file"
+        ""))
         if not lib.is_absolute():
             base = Path(__file__).resolve().parent
             lib = base / lib
