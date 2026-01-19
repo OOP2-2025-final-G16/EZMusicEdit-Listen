@@ -195,6 +195,7 @@ class EditPage(tk.Frame):
         self._create_file_input_ui()
         self._add_timeline_for_file(len(self.file_vars) - 1)
         self._bind_var_traces()
+        self.timeline_controller.bind_canvas_events()
         self.timeline_controller.redraw()
 
     def _remove_file(self):
@@ -325,9 +326,9 @@ class EditPage(tk.Frame):
         ).pack(pady=10)
 
     def _get_library_dir(self) -> Path:
-        lib = Path(self.config_data.get("library_dir", "library"))
+        lib = Path(self.config_data.get("library_dir", "library_file"))
         if not lib.is_absolute():
-            base = Path(__file__).resolve().parent
+            base = Path(__file__).resolve().parent.parent #EZMusicEdit-Listen/library_file
             lib = base / lib
         lib.mkdir(exist_ok=True)
         return lib
@@ -420,12 +421,15 @@ class EditPage(tk.Frame):
                 pass
             return
         
-        copy_temp_to_library(library_dir, tmp_path, output_filename=Path(filename).name)
+        # 保存処理を実行し、結果をチェック
+        result = copy_temp_to_library(library_dir, tmp_path, output_filename=Path(filename).name)
         
-        try:
-            tmp_path.unlink()
-        except Exception:
-            pass
+        # 保存が成功した場合のみ一時ファイルを削除
+        if result is not None:
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
     
     def on_preview(self) -> None:
         segments = self._collect_segments("プレビュー再生")
