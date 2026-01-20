@@ -1,121 +1,132 @@
 # EZMusicEdit-Listen
-複雑な操作なしに動画のクリップを作って再生できるGUIアプリ。
 
-## 概要
-- 複数音源から任意区間を切り出し、連結して再生・保存できます。
-- 切り出し・連結は `ffmpeg`、情報取得は `ffprobe`、プレビュー再生は `ffplay` を利用します。
-- エラーや状態通知は `tkinter.messagebox` で表示します。
+> **✨ 複雑な設定なし。タイムラインをドラッグするだけで、音声クリップ編集が完成。**
 
-## 依存ツール
-- 必須: `ffmpeg`（`ffprobe`/`ffplay` を含む）
-- macOS のインストール例:
+EZMusicEdit-Listen は、複雑な操作を一切排除し、直感的なマウス操作だけで音声の切り出し・連結・再生ができるGUIアプリケーションです。
 
-```bash
-brew install ffmpeg
-```
+---
 
-## 操作方法
-アプリは3つの画面で構成されている
+## 🎯 コンセプト
 
-- ライブラリ画面
-	保存済みの楽曲を管理・再生するメイン画面
+**「直感的な音声編集を、すべての人に」**
 
-	楽曲の再生: リストから曲を選択し、再生ボタンで音楽を聴く
-	一覧表示: ライブラリに保存されたすべての楽曲がリストアップ
+プロ向けの音声編集ツールは高機能ですが、操作を覚えるのが大変です。「好きな部分だけを切り出して、つなぎ合わせたい」というシンプルな目的のために、EZMusicEdit-Listen は開発されました。
 
-- プレイリスト画面
-	お気に入りの曲を組み合わせて自分だけのリストを作成・再生
+## ⭐ アピールポイント
 
-	プレイリストの作成: ライブラリから曲を選び、新規プレイリストを作成して保存
-	プレイリストの再生: 作成したプレイリストを選択すると、連続して楽曲が再生
+### 1. 直感的なUI - タイムラインドラッグ編集
+- 複雑なボタンやメニュー操作は不要。
+- **マウスをドラッグするだけ** で音声の開始位置と終了位置を指定できます。
 
-- 追加・編集画面
-	新しい音源の取り込みや、特定区間の切り出し加工
+### 2. 複数音源をカンタン組み合わせ
+- 複数ファイルから切り出した部分を **自動的に連結**。
+- 自分だけのメドレー作成や、DJの「つなぎ」のようなプレイリスト作成が可能です。
 
-	ライブラリへの追加: PC上の音声・動画ファイルを選択し、ライブラリへインポート
-	セグメント編集: * タイムライン上でドラッグ、または数値入力により、音源の「開始時間」と「長さ」を指定.曲と曲を繋げることもできる
-	プレビュー: 保存前に編集した区間を試聴
+### 3. MP4・MP3 両対応
+- 動画ファイル（MP4）から直接音声を抽出して編集可能。
+- 内部で自動的にMP3へ変換されるため、ファイル形式を気にする必要はありません。
 
-保存: 編集した内容は新しい楽曲としてライブラリへ保存されます。
+---
 
-## 主要モジュール
-- [edit/segment_cutter.py](edit/segment_cutter.py)
-	- `Segment`: `Path, start_sec, duration_sec` のタプル型。
-	- `cut_segments_to_temp_files(tmpdir, segments, prefix, purpose_label)`: セグメントを一時ディレクトリに個別 MP3 として切り出し。
-- [edit/library_saver.py](edit/library_saver.py)
-	- `save_segments_to_library(library_dir, segments, output_filename=None)`: 連結してライブラリに保存。
-	- `concat_segments_to_bytes(segments)`: 連結済み MP3 をメモリの `bytes` で返す（保存しない）。
-	- `concat_segments_to_file(segments, output_path)`: 連結済み MP3 を指定パスへ保存。
-	- `concat_segments_to_tempfile(segments, suffix='.mp3')`: 連結済み MP3 を一時ファイルに保存してパスを返す。
-- [edit/bytes_saver.py](edit/bytes_saver.py)
-	- `save_bytes_to_file(data, output_path)`: 任意の `bytes` を保存。
-	- `save_mp3_bytes(data, output_path)`: `.mp3` 拡張子を保証して保存。
-	- `save_mp3_bytes_with_timestamp(data, directory, prefix='edited')`: タイムスタンプ付きファイル名で保存。
-- [edit/preview_player.py](edit/preview_player.py)
-	- `preview_segments(segments)`: 切り出した一時 MP3 を順に `ffplay` で再生（簡易プレビュー）。
-- [edit/audio_info.py](edit/audio_info.py)
-	- `get_duration_seconds(path)`: `ffprobe` で音声長さ（秒）を取得。
-- [edit/timeline_helper.py](edit/timeline_helper.py)
-	- `TimelineController`: タイムライン描画・ドラッグ編集・数値欄同期・表示更新を担当。
+## 📸 アプリの構成
 
-## クイックスタート
+本アプリは、使いやすさを考慮した3つの画面で構成されています。
+
+* **ライブラリ画面**: 保存済みの楽曲を管理・再生するメイン画面。
+* **プレイリスト画面**: お気に入りの曲を組み合わせて自分だけの連続再生リストを作成。
+* **追加・編集画面**: 新しい音源の取り込みや、タイムラインによる切り出し加工を行う画面。
+
+---
+
+## 🚀 セットアップ
+
+### 1. 前提条件（必須）
+音声処理のために **ffmpeg** が必要です。
+
+| OS | インストールコマンド例 |
+| :--- | :--- |
+| **macOS** | `brew install ffmpeg` |
+| **Linux (Ubuntu)** | `sudo apt install ffmpeg` |
+| **Windows** | `choco install ffmpeg` または [公式サイト](https://ffmpeg.org/download.html)よりダウンロード |
+
+### 2. インストールと起動
+リポジトリをクローンし、メインプログラムを実行します。依存ライブラリは標準構成のため、追加インストールなしですぐに動かせます。
 
 ```bash
-python MyApp.py
+# 1. リポジトリをクローン
+git clone [https://github.com/YOUR_USERNAME/EZMusicEdit-Listen.git](https://github.com/YOUR_USERNAME/EZMusicEdit-Listen.git)
+cd EZMusicEdit-Listen
+
+# 2. アプリを起動
+python3 MyApp.py
+
 ```
 
-## 使い方（コード例）
+## 三つのページ構成
 
-連結してファイル保存:
 
-```python
-from pathlib import Path
-from edit.library_saver import concat_segments_to_file
 
-# segments は [(Path("input.mp3"), 10.0, 5.0), ...] の形式
-out = concat_segments_to_file(segments, Path("output/merged.mp3"))
-```
+### プレイリスト画面
 
-連結結果を `bytes` として取得（保存せず利用）:
+- お気に入りの曲を組み合わせて自分だけのリストを作成・再生
 
-```python
-from pathlib import Path
-from edit.library_saver import concat_segments_to_bytes
-from edit.bytes_saver import save_mp3_bytes_with_timestamp
+- プレイリストの作成: ライブラリから曲を選び、新規プレイリストを作成して保存
 
-data = concat_segments_to_bytes(segments)
-if data is not None:
-		save_mp3_bytes_with_timestamp(data, Path("library"), prefix="edited")
-```
+- プレイリストの再生: 作成したプレイリストを選択すると、連続して楽曲が再生
 
-一時ファイルのパスを取得（パスが必要なライブラリ向け）:
 
-```python
-from edit.library_saver import concat_segments_to_tempfile
 
-tmp_mp3 = concat_segments_to_tempfile(segments)
-if tmp_mp3 is not None:
-		# ここで再生/読み込みなどに使用（使用後は削除推奨）
-		pass
-```
+### 追加・編集画面
 
-プレビュー再生:
+- 新しい音源の取り込みや、特定区間の切り出し加工
 
-```python
-from edit.preview_player import preview_segments
 
-preview_segments(segments)
-```
 
-音声長さの取得:
+- ライブラリへの追加: PC上の音声・動画ファイルを選択し、ライブラリへインポート
 
-```python
-from pathlib import Path
-from edit.audio_info import get_duration_seconds
+- セグメント編集: * タイムライン上でドラッグ、または数値入力により、音源の「開始時間」と「長さ」を指定.曲と曲を繋げることもできる
 
-length = get_duration_seconds(Path("input.mp3"))
-```
+- プレビュー: 保存前に編集した区間を試聴
 
-## エラーハンドリング
-- 外部コマンド未インストール・失敗時はメッセージを表示し、安全に中断します（`None` を返すなど）。
-- ファイル操作失敗時も同様に通知します。
+- 保存: 編集した内容は新しい楽曲としてライブラリへ保存されます。
+
+
+## 基本的な使い方フロー
+
+
+1. 編集画面 → 音源ファイル（MP3/MP4）を指定
+        
+2. 切り出し範囲をタイムラインでドラッグ指定
+        
+3. プレビュー再生で確認
+        
+4. 「保存してライブラリに追加」でライブラリ保存
+        
+5. ライブラリ画面で再生・管理
+     
+6. プレイリスト画面で複数曲を組み合わせ
+---
+
+
+
+
+## 役割分担・サポート情報
+
+### 開発チーム
+
+
+
+| 役割 | 学籍番号 | 担当者名 | 担当機能 | 連絡先 |
+
+|--------|--------|----------|--------|
+
+| プロジェクトリード | X24006 | 井手和海 | - | https://github.com/justyuri4 |
+
+| 機能開発 | K21003 | 高宮千聖 | ライブラリ | - |
+
+| 機能開発 | k24091 | 浅山心良 | - | - |
+
+| 機能開発 | k24109 | 中島優斗 | プレイリスト | - |
+
+| 機能開発 | k24110 | 中本夏生 | 編集機能・タイムライン | https://github.com/nakamoto007 |
+
