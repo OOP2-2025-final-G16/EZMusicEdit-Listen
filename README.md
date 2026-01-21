@@ -1,4 +1,6 @@
 # EZMusicEdit-Listen
+イントロダクション動画
+https://youtu.be/ecGdhEDL2i0
 
 > ** 複雑な設定なし。タイムラインをドラッグするだけで、音声クリップ編集が完成。**
 
