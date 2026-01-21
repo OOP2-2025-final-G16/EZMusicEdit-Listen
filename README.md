@@ -1,7 +1,6 @@
 # EZMusicEdit-Listen
 イントロダクション動画
-https://youtu.be/ecGdhEDL2i0
-
+https://itcait-my.sharepoint.com/:v:/g/personal/x24006xx_aitech_ac_jp/IQDPL5z0F6dZQZQ_Th0BRKWnAbTTtRrDsX84SkuyQlOdNb4?e=rgQmZ1&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D
 > ** 複雑な設定なし。タイムラインをドラッグするだけで、音声クリップ編集が完成。**
 
 EZMusicEdit-Listen は、複雑な操作を一切排除し、直感的なマウス操作だけで音声の切り出し・連結・再生ができるGUIアプリケーションです。
