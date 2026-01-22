@@ -123,7 +123,7 @@ python3 MyApp.py
 
 | プロジェクトリード | X24006 | 井手和海 | - | https://github.com/justyuri4 |
 
-| 機能開発 | K24091 | 高宮千聖 | ライブラリ | - |
+| 機能開発 | K24091 | 高宮千聖 | ライブラリ | https://github.com/CHISATO-TAKAMIYA |
 
 | 機能開発 | k21003 | 浅山心良 | - | - |
 
